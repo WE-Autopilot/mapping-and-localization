@@ -1,5 +1,3 @@
-# Mapping and Localization
-
 # Mapping and Localization ROS2 Packages
 
 ## Table of Contents
