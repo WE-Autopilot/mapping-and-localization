@@ -102,7 +102,7 @@ cd ~/mapping_ws/src
 
 ```bash
 cd ~/mapping_ws/src
-git clone https://github.com/<your-org>/<your-repo>.git mapping_and_localization
+git clone git@github.com:WE-Autopilot/mapping-and-localization.git
 ```
 
 Resulting structure:
