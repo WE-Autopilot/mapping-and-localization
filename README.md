@@ -1,37 +1,4 @@
-# Mapping and Localization ROS2 Packages
-
-## Table of Contents
-
-1. [Requirements](#1-requirements)
-
-   1. [Source ROS2 in each new terminal](#11-source-ros2-in-each-new-terminal)
-   2. [Optional automatic ROS2 sourcing](#12-optional-automatic-ros2-sourcing)
-
-2. [Setting Up a Local Workspace](#2-setting-up-a-local-workspace)
-
-   1. [Create the workspace structure](#21-create-the-workspace-structure)
-   2. [Clone this repository into src](#22-clone-this-repository-into-src)
-   3. [Building the workspace](#23-building-the-workspace)
-   4. [Source the workspace after building](#24-source-the-workspace-after-building)
-   5. [Optional automatic workspace sourcing](#25-optional-automatic-workspace-sourcing)
-
-3. [Repository Structure](#3-repository-structure)
-
-4. [Working With the Two Packages](#4-working-with-the-two-packages)
-
-   1. [C plus plus Package](#41-c-plus-plus-package)
-   2. [Python Package](#42-python-package)
-
-5. [Running Nodes](#5-running-nodes)
-
-6. [Development Workflow and Rebuild Rules](#6-development-workflow-and-rebuild-rules)
-
-   1. [When to Rebuild](#61-when-to-rebuild)
-   2. [Recommended Developer Workflow](#62-recommended-developer-workflow)
-
-7. [Notes for Developers](#7-notes-for-developers)
-
----
+#Mapping & Localization
 
 # 1. Requirements
 
@@ -51,7 +18,7 @@ This README assumes ROS2 is installed under:
 
 ## 1.1 Source ROS2 in each new terminal
 
-ROS2 is not active automatically when a terminal is opened. Before using colcon or ros2 commands, run:
+ROS2 is not active automatically when a terminal is opened. Before using `colcon` or `ros2` commands, run:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -78,12 +45,12 @@ You still need to source your workspace separately after building it.
 
 All ROS2 development must happen inside a workspace that contains:
 
-* src for packages
-* build created by colcon
-* install created by colcon
-* log created by colcon
+* `src` for packages
+* `build` created by colcon
+* `install` created by colcon
+* `log` created by colcon
 
-Your repository must go inside src.
+Your repositories must go inside `src`.
 
 ---
 
@@ -96,11 +63,18 @@ cd ~/mapping_ws/src
 
 ---
 
-## 2.2 Clone this repository into src
+## 2.2 Clone this repository and ap1_msgs into src
+
+From inside `~/mapping_ws/src`:
 
 ```bash
 cd ~/mapping_ws/src
+
+# Mapping and localization repo
 git clone git@github.com:WE-Autopilot/mapping-and-localization.git
+
+# Shared messages repo used across AP1
+git clone git@github.com:WE-Autopilot/ap1_msgs.git
 ```
 
 Resulting structure:
@@ -111,7 +85,11 @@ mapping_ws
     mapping_and_localization
       mapping_and_localization_cpp
       mapping_localization_python
+    ap1_msgs
 ```
+
+All shared custom messages for AP1 should live in **ap1_msgs**.
+If you need a new message type, add it to `ap1_msgs` rather than creating a new message package inside this repository.
 
 ---
 
@@ -127,18 +105,18 @@ colcon build
 
 makes colcon:
 
-1. Compile C plus plus code
-2. Install binaries into install
-3. Register Python entry points
-4. Generate environment setup scripts
-5. Enable ros2 run to find the nodes
+* Compile C plus plus code
+* Install binaries into `install`
+* Register Python entry points
+* Generate environment setup scripts
+* Enable `ros2 run` to find the nodes
 
 You must build when:
 
 * C plus plus code changes
-* package.xml changes
-* CMakeLists.txt changes
-* setup.cfg entry points change
+* `package.xml` changes
+* `CMakeLists.txt` changes
+* `setup.cfg` entry points change
 
 ### Build the workspace
 
@@ -163,11 +141,10 @@ source ~/mapping_ws/install/setup.bash
 You must source the workspace:
 
 * In new terminals
-* After every colcon build
-* Before running ros2 commands
+* After every `colcon build`
+* Before running `ros2` commands
 
 Python code works as long as you have sourced the workspace once in that terminal.
-
 C plus plus requires sourcing after each rebuild.
 
 ---
@@ -181,7 +158,7 @@ echo "source ~/mapping_ws/install/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-Make sure the order in your bashrc is:
+Make sure the order in your `~/.bashrc` is:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -211,17 +188,30 @@ mapping_and_localization
   README.md
 ```
 
-Only the two folders with package.xml are ROS2 packages.
+Only the two folders with `package.xml` are ROS2 packages inside this repository.
+
+The `ap1_msgs` package is a separate repository at:
+
+```
+mapping_ws
+  src
+    ap1_msgs
+```
+
+It contains shared message definitions that can be used by any AP1 package.
+Add new messages there when needed.
 
 ---
 
 # 4. Working With the Two Packages
 
-## 4.1 C plus plus Package: mapping_and_localization_cpp
+---
+
+## 4.1 C plus plus Package: `mapping_and_localization_cpp`
 
 ### Adding a node
 
-In CMakeLists.txt:
+In `CMakeLists.txt`:
 
 ```cmake
 add_executable(localization_node src/localization_node.cpp)
@@ -229,7 +219,6 @@ add_executable(localization_node src/localization_node.cpp)
 ament_target_dependencies(localization_node
   rclcpp
 )
-
 install(TARGETS
   localization_node
   DESTINATION lib/${PROJECT_NAME}
@@ -238,27 +227,40 @@ install(TARGETS
 
 ### Adding dependencies
 
-In package.xml:
+In `package.xml`:
 
 ```xml
 <depend>rclcpp</depend>
 <depend>std_msgs</depend>
 ```
 
-In CMakeLists.txt:
+If your C plus plus node uses messages from `ap1_msgs` (e.g., `#include "ap1_msgs/msg/...")`, add:
+
+```xml
+<depend>ap1_msgs</depend>
+```
+
+In `CMakeLists.txt`:
 
 ```cmake
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(ap1_msgs REQUIRED)  # Only if you use ap1_msgs
+
+ament_target_dependencies(localization_node
+  rclcpp
+  std_msgs
+  ap1_msgs        # Only if you use ap1_msgs
+)
 ```
 
 ---
 
-## 4.2 Python Package: mapping_localization_python
+## 4.2 Python Package: `mapping_localization_python`
 
 ### Adding a node
 
-In setup.cfg:
+In `setup.cfg`:
 
 ```ini
 [options.entry_points]
@@ -268,11 +270,17 @@ console_scripts =
 
 ### Dependencies
 
-In package.xml:
+In `package.xml`:
 
 ```xml
 <depend>rclpy</depend>
 <depend>std_msgs</depend>
+```
+
+If your Python node uses messages from `ap1_msgs`, also add:
+
+```xml
+<depend>ap1_msgs</depend>
 ```
 
 Python files live inside:
@@ -307,18 +315,20 @@ ros2 run mapping_localization_python pose_node
 
 # 6. Development Workflow and Rebuild Rules
 
+---
+
 ## 6.1 When to Rebuild
 
-| What changed                      | Need `colcon build --symlink-install` | Reason                            |
-| --------------------------------- | ------------------------------------- | --------------------------------- |
-| Python file (`.py`)               | No                                    | Symlink points to source file     |
-| Launch, YAML, configuration       | No                                    | Symlinks update instantly         |
-| C plus plus file (`.cpp`, `.hpp`) | Yes                                   | Must recompile                    |
-| package.xml                       | Yes                                   | Metadata changed                  |
-| CMakeLists.txt                    | Yes                                   | Build system instructions changed |
-| New Python node in setup.cfg      | Yes                                   | Must regenerate entry point       |
-| Editing setup.cfg text only       | Usually no                            | Not used at runtime               |
-| Adding a new package              | Yes                                   | Build system must detect it       |
+| What changed                   | Need `colcon build --symlink-install` | Reason                            |
+| ------------------------------ | ------------------------------------- | --------------------------------- |
+| Python file (.py)              | No                                    | Symlink points to source file     |
+| Launch, YAML, configuration    | No                                    | Symlinks update instantly         |
+| C plus plus file (.cpp, .hpp)  | Yes                                   | Must recompile                    |
+| `package.xml`                  | Yes                                   | Metadata changed                  |
+| `CMakeLists.txt`               | Yes                                   | Build system instructions changed |
+| New Python node in `setup.cfg` | Yes                                   | Must regenerate entry point       |
+| Editing `setup.cfg` text only  | Usually no                            | Not used at runtime               |
+| Adding a new package           | Yes                                   | Build system must detect it       |
 
 ---
 
@@ -330,38 +340,41 @@ ros2 run mapping_localization_python pose_node
 2. Source the workspace once in any terminal
 3. Run the node
 
-No rebuild and sourcing workspace needed unless adding new entry points.
+No rebuild required unless adding new entry points.
 
 ### C plus plus workflow
 
 1. Edit the C plus plus file
+
 2. Run:
 
    ```bash
    colcon build --symlink-install
    ```
-3. Then source again:
+
+3. Source again:
 
    ```bash
    source install/setup.bash
    ```
+
 4. Run the node
 
-Rebuild required for all C plus plus changes.
+### After modifying `package.xml`, `CMakeLists.txt`, or `setup.cfg`
 
-### After modifying package.xml, CMakeLists.txt, or setup.cfg
-
-1. Rebuild with symlink
-2. Source workspace
-3. Run the node
+* Rebuild with symlink
+* Source workspace
+* Run the node
 
 ---
 
 # 7. Notes for Developers
 
-* Only folders with package.xml are ROS2 packages
-* build, install, log and vscode should not be committed
-* Always run colcon build from the workspace root, never inside a package
+* Only folders with `package.xml` are ROS2 packages
+* `build`, `install`, `log` and `.vscode` should not be committed
+* Always run `colcon build` from the workspace root, never inside a package
 * Never run CMake manually
+* Shared messages should live in **ap1_msgs**. If you need a new message type for mapping or localization, add it there and then depend on `ap1_msgs` in your package.
+
 
 
