@@ -27,6 +27,7 @@ from rclpy.node import Node
 from ap1_msgs.msg import OsmMap       # must have: string osm_xml
 from ap1_msgs.msg import LaneWaypoints  # must have: Point[] left_points, right_points
 from ap1_msgs.msg import HDMap        # must have: string osm_xml
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from geometry_msgs.msg import Point
 
 # ----- Lanelet2 imports -----
@@ -72,11 +73,16 @@ class LaneletMappingNode(Node):
         super().__init__("ap1_mapping_Lanelet")
 
         # --- Subscribers ---
+        qos_latched = QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
         self.osm_sub = self.create_subscription(
             OsmMap,
             "/ap1/mapping/OSM/map",
             self.osm_callback,
-            10,
+            qos_latched,
         )
 
         self.waypoints_sub = self.create_subscription(
@@ -169,7 +175,10 @@ class LaneletMappingNode(Node):
         )
 
         # Set the centerline explicitly (helps some tools/planners)
-        lane.setCenterline(center_ls)
+        center_ls.attributes["type"] = "line_thin"
+        center_ls.attributes["subtype"] = "centerline"
+
+        base_map.add(center_ls)
 
         # 4) Add a placeholder regulatory element (TrafficLight) so spec sees <regulatory_element>
         self.attach_placeholder_regulatory_element(lane, center_ls)
@@ -339,7 +348,7 @@ class LaneletMappingNode(Node):
             tmp_path = tmp.name
 
         try:
-            write(tmp_path, self._projector, lanelet_map)
+            write(tmp_path, lanelet_map, self._projector)
             with open(tmp_path, "r", encoding="utf-8") as f:
                 xml = f.read()
         finally:
