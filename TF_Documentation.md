@@ -46,7 +46,7 @@ Different sensors and systems naturally "think" in different frames:
 - **Path planner** needs to know where obstacles are relative to the robot
 
 TF connects them all together automatically.
-```
+
 
 Purpose and Scope
 -----------------
@@ -69,13 +69,35 @@ Frame Hierarchy
 
 The TF tree for SLAM operations follows a four-level hierarchy:
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   map → odom → base_link → lidar_frame   `
+```
+map → odom → base_link → lidar_frame
+```
 
 This structure separates concerns between global localization (SLAM), local odometry estimation, robot-centric coordinates, and sensor-specific frames. Each transform in this chain serves a distinct purpose and is published by a specific node or configuration.
 
-### Hierarchy Diagram
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML        `map           │           │  Published by: Kitware SLAM           │  Type: Dynamic           │  Rate: ~10 Hz           │          odom           │           │  Published by: Odometry Source           │  Type: Dynamic           │  Rate: ~50-100 Hz           │        base_link           │           │  Published by: Static Transform Publisher / URDF           │  Type: Static           │  Rate: On startup           │      lidar_frame`
+### Hierarchy Diagram
+```
+           map
+            │
+            │  Published by: Kitware SLAM
+            │  Type: Dynamic
+            │  Rate: ~10 Hz
+            │
+           odom
+            │
+            │  Published by: Odometry Source
+            │  Type: Dynamic
+            │  Rate: ~50-100 Hz
+            │
+        base_link
+            │
+            │  Published by: Static Transform Publisher / URDF
+            │  Type: Static
+            │  Rate: On startup
+            │
+       lidar_frame
+```
 
 Frame Definitions
 -----------------
@@ -137,12 +159,13 @@ The odom frame provides a locally accurate, continuous pose estimate based on wh
     
 *   Must maintain same orientation conventions as map frame
     
-
-**Key Relationship:**The transform map → odom published by SLAM represents the accumulated drift correction. This allows downstream nodes to obtain globally accurate poses by transforming through the complete chain: map → odom → base\_link.
+**Key Relationship:** The transform map → odom published by SLAM represents the accumulated drift correction. This allows downstream nodes to obtain globally accurate poses by transforming through the complete chain: map → odom → base\_link.
 
 ### base\_link Frame
 
-**Type:** Robot body-fixed coordinate frame**Authority:** Robot's kinematic structure**Persistence:** Defined by robot geometry
+**Type:** Robot body-fixed coordinate frame
+**Authority:** Robot's kinematic structure
+**Persistence:** Defined by robot geometry
 
 The base\_link frame is rigidly attached to the robot's chassis and serves as the primary reference point for all robot-mounted sensors and actuators. This frame moves with the robot and is the target frame for most robot pose queries.
 
@@ -179,7 +202,9 @@ The base\_link frame is rigidly attached to the robot's chassis and serves as th
 
 ### lidar\_frame Frame
 
-**Type:** Sensor-fixed coordinate frame**Authority:** Physical sensor mounting**Persistence:** Defined by sensor installation
+**Type:** Sensor-fixed coordinate frame
+**Authority:** Physical sensor mounting
+**Persistence:** Defined by sensor installation
 
 The lidar\_frame (also referred to as velodyne, rslidar, or sensor-specific names) represents the coordinate system of the LiDAR sensor used for SLAM. This frame's origin is at the sensor's measurement reference point, with axes aligned to the sensor's orientation.
 
@@ -203,7 +228,7 @@ The lidar\_frame (also referred to as velodyne, rslidar, or sensor-specific name
 *   **Critical requirement:** Must match the frame\_id in published sensor data
     
 
-**Naming:**Replace lidar\_frame with your actual sensor frame name:
+**Naming:** Replace lidar\_frame with your actual sensor frame name:
 
 *   Velodyne sensors: typically velodyne
     
@@ -226,7 +251,11 @@ Frame Ownership and Publishing Responsibility
 
 Proper TF tree operation requires that each transform has exactly one authoritative publisher. Multiple publishers for the same transform will cause conflicts, warnings, and undefined behavior.
 
-TransformPublisherNode TypeUpdate RateNotesmap → odomKitware SLAMSLAM/Localization~10 HzCorrects odometry driftodom → base\_linkOdometry SourceOdometry~50-100 HzHigh-frequency pose updatesbase\_link → lidar\_frameStatic Publisher or URDFConfigurationOnce at startupFixed sensor mounting
+| Transform | Publisher | Node Type | Update Rate | Notes |
+|-----------|-----------|-----------|-------------|-------|
+| `map → odom` | Kitware SLAM | SLAM/Localization | ~10 Hz | Corrects odometry drift |
+| `odom → base_link` | Odometry Source | Odometry | ~50-100 Hz | High-frequency pose updates |
+| `base_link → lidar_frame` | Static Publisher or URDF | Configuration | Once at startup | Fixed sensor mounting |
 
 ### Publishing Guidelines
 
