@@ -7,11 +7,10 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.time import Time
 
 
 class SlamBridgeNode(Node):
-    """Republish SLAM odometry on stable localization topics."""
+    """Republish SLAM odometry immediately on localization topics."""
 
     def __init__(self) -> None:
         super().__init__('slam_bridge_node')
@@ -31,25 +30,10 @@ class SlamBridgeNode(Node):
                 '/localization/pose',
             ).value
         )
-        self._output_rate_hz = float(
-            self.declare_parameter('output_rate_hz', 20.0).value
-        )
-        self._odom_timeout_sec = float(
-            self.declare_parameter('odom_timeout_sec', 0.5).value
-        )
         self._publish_pose = bool(
             self.declare_parameter('publish_pose', True).value
         )
         self._qos_depth = int(self.declare_parameter('qos_depth', 10).value)
-
-        if self._output_rate_hz <= 0.0:
-            self.get_logger().warning(
-                'output_rate_hz must be > 0. Falling back to 20.0 Hz.'
-            )
-            self._output_rate_hz = 20.0
-
-        self._last_odom: Optional[Odometry] = None
-        self._last_odom_rx_time: Optional[Time] = None
 
         self._slam_odom_sub = self.create_subscription(
             Odometry,
@@ -68,38 +52,20 @@ class SlamBridgeNode(Node):
             self._qos_depth,
         )
 
-        self._timer = self.create_timer(
-            1.0 / self._output_rate_hz,
-            self._publish_outputs,
-        )
-
         self.get_logger().info(
             (
                 'SLAM bridge ready. '
-                'odom: %s -> %s, pose topic: %s, rate: %.2f Hz'
+                'odom: %s -> %s, pose topic: %s, publish mode: callback-driven'
             )
             % (
                 self._input_slam_odom_topic,
                 self._output_localization_odom_topic,
                 self._output_localization_pose_topic,
-                self._output_rate_hz,
             )
         )
 
     def _on_slam_odom(self, msg: Odometry) -> None:
-        self._last_odom = deepcopy(msg)
-        self._last_odom_rx_time = self.get_clock().now()
-
-    def _publish_outputs(self) -> None:
-        now = self.get_clock().now()
-        if self._last_odom is None or not self._is_recent(
-            self._last_odom_rx_time,
-            now,
-            self._odom_timeout_sec,
-        ):
-            return
-
-        odom_message = deepcopy(self._last_odom)
+        odom_message = deepcopy(msg)
         self._localization_odom_pub.publish(odom_message)
 
         if self._publish_pose:
@@ -107,17 +73,6 @@ class SlamBridgeNode(Node):
             pose_message.header = odom_message.header
             pose_message.pose = odom_message.pose.pose
             self._localization_pose_pub.publish(pose_message)
-
-    @staticmethod
-    def _is_recent(
-        received_time: Optional[Time],
-        now: Time,
-        timeout_sec: float,
-    ) -> bool:
-        if received_time is None:
-            return False
-        age_sec = (now - received_time).nanoseconds / 1e9
-        return age_sec <= timeout_sec
 
 
 def main(args: Optional[list[str]] = None) -> None:

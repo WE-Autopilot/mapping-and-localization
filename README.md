@@ -384,7 +384,7 @@ This repository now includes a minimum mapping/localization pipeline in the `map
 
 It is designed to:
 * Consume perception entities and lane boundaries
-* Publish both at a constant rate for downstream P&C
+* Publish immediately on each incoming perception callback
 * Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
 * Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to stable localization topics
 
@@ -400,8 +400,6 @@ Outputs:
 * `/mapping/stable/lane_boundaries` (`ap1_msgs/msg/LaneBoundaries`)
 
 Key params:
-* `output_rate_hz` (default `20.0`)
-* `entity_timeout_sec` (default `0.5`)
 * `lane_timeout_sec` (default `1.0`)
 * `min_lane_points` (default `2`)
 
@@ -414,8 +412,6 @@ Outputs:
 * `/localization/pose` (`geometry_msgs/msg/PoseStamped`)
 
 Key params:
-* `output_rate_hz` (default `20.0`)
-* `odom_timeout_sec` (default `0.5`)
 * `publish_pose` (default `true`)
 
 ## 8.2 Launch
