@@ -46,6 +46,8 @@ class PerceptionPipelineNode(Node):
         self._min_lane_points = int(
             self.declare_parameter('min_lane_points', 2).value
         )
+
+        # Queue length is one, we don't need a queue per say
         self._qos_depth = int(self.declare_parameter('qos_depth', 1).value)
         self._cached_left_boundary: list[Point] = []
         self._cached_right_boundary: list[Point] = []
