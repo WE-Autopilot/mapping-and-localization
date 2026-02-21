@@ -33,7 +33,7 @@ class SlamBridgeNode(Node):
         self._publish_pose = bool(
             self.declare_parameter('publish_pose', True).value
         )
-        self._qos_depth = int(self.declare_parameter('qos_depth', 10).value)
+        self._qos_depth = int(self.declare_parameter('qos_depth', 1).value)
 
         self._slam_odom_sub = self.create_subscription(
             Odometry,
