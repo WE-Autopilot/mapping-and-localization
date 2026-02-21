@@ -376,5 +376,71 @@ No rebuild required unless adding new entry points.
 * Never run CMake manually
 * Shared messages should live in **ap1_msgs**. If you need a new message type for mapping or localization, add it there and then depend on `ap1_msgs` in your package.
 
+---
+
+# 8. Bare-Minimum Perception to P&C Pipeline
+
+This repository now includes a minimum mapping/localization pipeline in the `mapping_localization_python` package.
+
+It is designed to:
+* Consume perception entities and lane boundaries
+* Publish immediately on each incoming perception callback
+* Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
+* Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to stable localization topics
+
+## 8.1 Nodes
+
+### `perception_pipeline_node`
+Inputs:
+* `/perception/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/perception/lane_boundaries` (`ap1_msgs/msg/LaneBoundaries`)
+
+Outputs:
+* `/mapping/stable/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/mapping/stable/lane_boundaries` (`ap1_msgs/msg/LaneBoundaries`)
+
+Key params:
+* `lane_timeout_sec` (default `1.0`)
+* `min_lane_points` (default `2`)
+
+### `slam_bridge_node`
+Input:
+* `/slam_odom` (`nav_msgs/msg/Odometry`)
+
+Outputs:
+* `/localization/odom` (`nav_msgs/msg/Odometry`)
+* `/localization/pose` (`geometry_msgs/msg/PoseStamped`)
+
+Key params:
+* `publish_pose` (default `true`)
+
+## 8.2 Launch
+
+Launch everything:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py
+```
+
+Enable Kitware SLAM in the same launch:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py use_kitware_slam:=true
+```
+
+By default, this launch passes:
+
+```
+mapping_localization_python/config/kitware_slam_params.yaml
+```
+
+to `lidar_slam_node`. Replace it with your tuned config when available:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  kitware_slam_params:=/absolute/path/to/your_slam_params.yaml
+```
+
 
 
