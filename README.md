@@ -442,5 +442,13 @@ ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   kitware_slam_params:=/absolute/path/to/your_slam_params.yaml
 ```
 
+Localization-only example (fixed map, no loop closure):
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  kitware_slam_params:=/absolute/path/to/slam_params_localization.yaml
+```
+
 
 
