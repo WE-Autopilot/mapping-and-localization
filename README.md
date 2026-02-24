@@ -431,7 +431,7 @@ ros2 launch mapping_localization_python mapping_pipeline.launch.py use_kitware_s
 By default, this launch passes:
 
 ```
-mapping_localization_python/config/kitware_slam_params.yaml
+mapping_localization_python/config/slam_params_online.yaml
 ```
 
 to `lidar_slam_node`. Replace it with your tuned config when available:

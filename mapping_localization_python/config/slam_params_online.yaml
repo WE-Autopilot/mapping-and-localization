@@ -1,0 +1,86 @@
+/**:
+  ros__parameters:
+    # Core frames and LiDAR input topic used by lidar_slam_node.
+    odometry_frame: "odom"
+    tracking_frame: "base_link"
+    input: "lidar_points"
+
+    output:
+      pose:
+        odom: true
+        tf: true
+        predicted_odom: false
+        predicted_tf: false
+        frequency: 20.0
+
+    # Graph / loop closure configuration for online mapping.
+    graph:
+      constraint:
+        loop_closure: true
+      loop_closure:
+        # Search revisits within local submaps around query/revisited poses.
+        query_map_start_range: -5.0
+        query_map_end_range: 5.0
+        revisited_map_start_range: -5.0
+        revisited_map_end_range: 5.0
+        gap_length: 20.0
+        sample_step: 10.0
+        enable_offset: false
+        use_submap: true
+        enable_overlap_check: true
+        overlap_threshold: 0.5
+        # Accept loop candidates up to 10 m apart before ICP confirmation.
+        distance_threshold: 10.0
+        # ICP refinement used for loop registration.
+        ICP_max_iter: 80
+        LM_max_iter: 80
+        init_saturation_distance: 2.0
+        final_saturation_distance: 0.3
+
+    # Motion model and registration settings.
+    slam:
+      # Equivalent to "predict with odometry": extrapolate from previous motion.
+      ego_motion: 1
+      undistortion: 2
+      interpolation_model: 0
+
+      # Kitware lidar_slam_node uses ICP-based registration (no NDT selector).
+      # max_neighbors_distance is the practical analogue of max correspondence distance.
+      ego_motion_registration:
+        max_neighbors_distance: 0.5
+        ICP_max_iter: 6
+        LM_max_iter: 20
+        init_saturation_distance: 2.0
+        final_saturation_distance: 0.5
+
+      localization:
+        max_neighbors_distance: 0.5
+        ICP_max_iter: 5
+        LM_max_iter: 20
+        init_saturation_distance: 1.5
+        final_saturation_distance: 0.3
+
+      # Map update frequency: add keyframes every 0.5 m (or 5 deg turn).
+      keyframes:
+        distance_threshold: 0.5
+        angle_threshold: 5.0
+
+      # Map resolution and update mode for online mapping.
+      voxel_grid:
+        update_maps: 2
+        submap_extraction_mode: 1
+        leaf_size:
+          edges: 0.1
+          intensity_edges: 0.1
+          planes: 0.1
+          blobs: 0.1
+        size: 80
+        resolution: 10.0
+        decaying_threshold: -1
+        min_frames_per_voxel: 2
+
+    # Equivalent to "predict_with_imu" toggle from generic SLAM configs.
+    external_sensors:
+      imu:
+        enable: false
+        gravity_weight: 0.0
