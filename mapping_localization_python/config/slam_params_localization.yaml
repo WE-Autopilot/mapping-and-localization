@@ -1,0 +1,111 @@
+/**:
+  ros__parameters:
+    # Core frames and LiDAR input topic used by lidar_slam_node.
+    odometry_frame: "odom"
+    tracking_frame: "base_link"
+    input: "lidar_points"
+
+    # Keep outputs focused on localization pose/confidence.
+    output:
+      registered_points: false
+      pose:
+        odom: true
+        tf: true
+        predicted_odom: false
+        predicted_tf: false
+        frequency: 20.0
+      maps:
+        edges: false
+        intensity_edges: false
+        planes: false
+        blobs: false
+      submaps:
+        edges: false
+        intensity_edges: false
+        planes: false
+        blobs: false
+      keypoints:
+        edges: false
+        intensity_edges: false
+        planes: false
+        blobs: false
+      confidence: true
+
+    # Localization-only workflow:
+    # 1) load a prebuilt map prefix (PCD set) from mapping mode
+    # 2) keep map fixed while tracking pose
+    maps:
+      initial_maps: ""  # Set this to your saved map prefix path before runtime.
+      keep_label: false
+      override_timestamp: false
+      timestamp_offset: 0.0
+      # Manual initialization method (default).
+      initial_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    # Disable loop closure in localization-only mode.
+    graph:
+      constraint:
+        loop_closure: false
+        landmark: false
+        gps: false
+        ext_pose: false
+
+    # Keep confidence history available for monitoring/debug.
+    logging:
+      timeout: 600.0
+      only_keyframes: false
+
+    # Registration and prediction tuned for localization throughput + stability.
+    slam:
+      n_threads: 4
+      2d_mode: false
+      # Odometry-like prediction from previous motion.
+      ego_motion: 1
+      undistortion: 1
+      interpolation_model: 0
+
+      localization:
+        # Practical equivalent of a max correspondence distance.
+        max_neighbors_distance: 0.5
+        ICP_max_iter: 5
+        LM_max_iter: 20
+        init_saturation_distance: 1.5
+        final_saturation_distance: 0.3
+
+      # Fixed-map mode: no keypoint map update during localization.
+      voxel_grid:
+        update_maps: 0
+        submap_extraction_mode: 1
+        leaf_size:
+          edges: 0.1
+          intensity_edges: 0.1
+          planes: 0.1
+          blobs: 0.1
+        size: 80
+        resolution: 10.0
+        decaying_threshold: -1
+        min_frames_per_voxel: 2
+
+      confidence:
+        window: 10
+        overlap:
+          sampling_ratio: 0.25
+          # Equivalent to requiring roughly 70% overlap confidence.
+          gap_threshold: 0.3
+        position_error:
+          # Maximum acceptable localization error [m].
+          threshold: 0.2
+        failure_detector:
+          enable: true
+          recovery_time: 1.0
+
+    # Automatic initialization option:
+    # set external_poses.enable=true and provide external pose measurements.
+    external_sensors:
+      external_poses:
+        enable: false
+        weight: 1.0
+        saturation_distance: 2.0
+      imu:
+        enable: false
+        gravity_weight: 0.0
