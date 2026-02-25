@@ -1,2 +1,8 @@
 /**:
-  ros__parameters: {}
+  ros__parameters:
+    odometry_frame: "map"
+    output:
+      pose:
+        odom: true
+        tf: true
+        frequency: 20.0

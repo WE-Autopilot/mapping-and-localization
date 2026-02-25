@@ -12,6 +12,12 @@ def generate_launch_description() -> LaunchDescription:
     """Create launch description for pipeline and optional Kitware SLAM."""
     use_kitware_slam = LaunchConfiguration('use_kitware_slam')
     kitware_slam_params = LaunchConfiguration('kitware_slam_params')
+    output_slam_pose_topic = LaunchConfiguration('output_slam_pose_topic')
+    slam_pose_frame = LaunchConfiguration('slam_pose_frame')
+    slam_pose_publish_rate_hz = LaunchConfiguration('slam_pose_publish_rate_hz')
+    slam_pose_frequency_log_interval_sec = LaunchConfiguration(
+        'slam_pose_frequency_log_interval_sec'
+    )
 
     return LaunchDescription(
         [
@@ -33,6 +39,26 @@ def generate_launch_description() -> LaunchDescription:
                     'Parameter YAML passed to lidar_slam_node when enabled.'
                 ),
             ),
+            DeclareLaunchArgument(
+                'output_slam_pose_topic',
+                default_value='/slam_pose',
+                description='Topic for PoseWithCovarianceStamped SLAM pose.',
+            ),
+            DeclareLaunchArgument(
+                'slam_pose_frame',
+                default_value='map',
+                description='Frame for /slam_pose output.',
+            ),
+            DeclareLaunchArgument(
+                'slam_pose_publish_rate_hz',
+                default_value='20.0',
+                description='Publish rate for /slam_pose (minimum 10 Hz).',
+            ),
+            DeclareLaunchArgument(
+                'slam_pose_frequency_log_interval_sec',
+                default_value='5.0',
+                description='Interval in seconds to log /slam_pose rate.',
+            ),
             Node(
                 package='mapping_localization_python',
                 executable='perception_pipeline_node',
@@ -44,6 +70,16 @@ def generate_launch_description() -> LaunchDescription:
                 executable='slam_bridge_node',
                 name='slam_bridge',
                 output='screen',
+                parameters=[
+                    {
+                        'output_slam_pose_topic': output_slam_pose_topic,
+                        'slam_pose_frame': slam_pose_frame,
+                        'slam_pose_publish_rate_hz': slam_pose_publish_rate_hz,
+                        'slam_pose_frequency_log_interval_sec': (
+                            slam_pose_frequency_log_interval_sec
+                        ),
+                    }
+                ],
             ),
             Node(
                 package='lidar_slam',

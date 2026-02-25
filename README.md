@@ -410,9 +410,14 @@ Input:
 Outputs:
 * `/localization/odom` (`nav_msgs/msg/Odometry`)
 * `/localization/pose` (`geometry_msgs/msg/PoseStamped`)
+* `/slam_pose` (`geometry_msgs/msg/PoseWithCovarianceStamped`, frame `map`)
 
 Key params:
 * `publish_pose` (default `true`)
+* `publish_slam_pose` (default `true`)
+* `slam_pose_frame` (default `map`)
+* `slam_pose_publish_rate_hz` (default `20.0`, clamped to minimum `10.0`)
+* `slam_pose_frequency_log_interval_sec` (default `5.0`)
 
 ## 8.2 Launch
 
@@ -434,12 +439,22 @@ By default, this launch passes:
 mapping_localization_python/config/kitware_slam_params.yaml
 ```
 
-to `lidar_slam_node`. Replace it with your tuned config when available:
+to `lidar_slam_node` (configured for `odometry_frame: map` and pose output at
+`20 Hz`). Replace it with your tuned config when available:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   use_kitware_slam:=true \
   kitware_slam_params:=/absolute/path/to/your_slam_params.yaml
+```
+
+Tune `/slam_pose` output frame and rate:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  slam_pose_frame:=map \
+  slam_pose_publish_rate_hz:=20.0
 ```
 
 
