@@ -48,6 +48,10 @@ setup(
                 'slam_bridge_node = '
                 'mapping_localization_python.slam_bridge_node:main'
             ),
+	    (
+                'validate_tf_tree = '
+                'mapping_localization_python.validate_tf_tree:main'
+            ),
         ],
     },
 )

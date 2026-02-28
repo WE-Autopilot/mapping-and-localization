@@ -53,5 +53,21 @@ def generate_launch_description() -> LaunchDescription:
                 parameters=[kitware_slam_params],
                 condition=IfCondition(use_kitware_slam),
             ),
+	    Node( 
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name='base_to_lidar_tf',
+                arguments=[
+                        '--x', '0.0',   # meters left/right (0 = centered)
+                        '--y', '0.0',   # meters forward/back (0 = centered)
+                        '--z', '0.3',   # meters up/down (0.3 = 30cm above base)
+                        '--roll',  '0.0',   # rotation around X axis (0 = no tilt)
+                        '--pitch', '0.0',   # rotation around Y axis (0 = no tilt)
+                        '--yaw',   '0.0',   # rotation around Z axis (0 = facing forward)
+                        '--frame-id',       'base_link',   # parent frame (the robot body)
+                        '--child-frame-id', 'lidar_frame', # child frame (the sensor)
+                    ],                
+                output='screen',
+            ),
         ]
     )
