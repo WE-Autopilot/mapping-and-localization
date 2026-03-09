@@ -386,18 +386,20 @@ It is designed to:
 * Consume perception entities and lane boundaries
 * Publish immediately on each incoming perception callback
 * Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
-* Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to stable localization topics
+* Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to AP1 localization topics
+* Publish an accumulated distance estimate from SLAM odometry
+* Expose a point-registry service for planning and mapping
 
 ## 8.1 Nodes
 
 ### `perception_pipeline_node`
 Inputs:
-* `/perception/entities` (`ap1_msgs/msg/EntityStateArray`)
-* `/perception/lane_boundaries` (`ap1_msgs/msg/LaneBoundaries`)
+* `/ap1/perception/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/ap1/perception/lanes` (`ap1_msgs/msg/LaneBoundaries`)
 
 Outputs:
-* `/mapping/stable/entities` (`ap1_msgs/msg/EntityStateArray`)
-* `/mapping/stable/lane_boundaries` (`ap1_msgs/msg/LaneBoundaries`)
+* `/ap1/mapping/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/ap1/mapping/lanes` (`ap1_msgs/msg/LaneBoundaries`)
 
 Key params:
 * `lane_timeout_sec` (default `1.0`)
@@ -408,11 +410,30 @@ Input:
 * `/slam_odom` (`nav_msgs/msg/Odometry`)
 
 Outputs:
-* `/localization/odom` (`nav_msgs/msg/Odometry`)
-* `/localization/pose` (`geometry_msgs/msg/PoseStamped`)
+* `/ap1/localization/odom` (`nav_msgs/msg/Odometry`)
+* `/ap1/localization/pose` (`geometry_msgs/msg/PoseStamped`)
+* `/ap1/localization/slam_pose` (`geometry_msgs/msg/PoseWithCovarianceStamped`, frame `map`)
+* `/ap1/localization/distance` (`ap1_msgs/msg/FloatStamped`, meters travelled)
 
 Key params:
 * `publish_pose` (default `true`)
+* `publish_slam_pose` (default `true`)
+* `publish_distance` (default `true`)
+* `slam_pose_frame` (default `map`)
+* `slam_pose_publish_rate_hz` (default `20.0`, clamped to minimum `10.0`)
+* `slam_pose_frequency_log_interval_sec` (default `5.0`)
+* `distance_jump_threshold_m` (default `10.0`)
+
+### `stored_point_registry_node`
+Services:
+* `/ap1/mapping/point_registry/create` (`ap1_msgs/srv/CreateStoredPoint`)
+* `/ap1/mapping/point_registry/delete` (`ap1_msgs/srv/DeleteStoredPoint`)
+* `/ap1/mapping/point_registry/lookup` (`ap1_msgs/srv/LookupStoredPoint`)
+
+Behavior:
+* Create stores a `geometry_msgs/Point` and returns a generated ID
+* Delete removes a stored point by ID
+* Lookup returns a stored point by ID when present
 
 ## 8.2 Launch
 
@@ -434,12 +455,29 @@ By default, this launch passes:
 mapping_localization_python/config/kitware_slam_params.yaml
 ```
 
-to `lidar_slam_node`. Replace it with your tuned config when available:
+to `lidar_slam_node` (configured for `odometry_frame: map` and pose output at
+`20 Hz`). Replace it with your tuned config when available:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   use_kitware_slam:=true \
   kitware_slam_params:=/absolute/path/to/your_slam_params.yaml
+```
+
+Tune SLAM pose output frame and rate:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  slam_pose_frame:=map \
+  slam_pose_publish_rate_hz:=20.0
+```
+
+Override the default distance topic if needed:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  output_distance_topic:=/ap1/localization/distance
 ```
 
 
