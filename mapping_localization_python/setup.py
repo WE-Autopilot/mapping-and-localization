@@ -48,6 +48,10 @@ setup(
                 'slam_bridge_node = '
                 'mapping_localization_python.slam_bridge_node:main'
             ),
+            (
+                'stored_point_registry_node = '
+                'mapping_localization_python.stored_point_registry_node:main'
+            ),
         ],
     },
 )

@@ -5,6 +5,7 @@ from math import sqrt
 from typing import List, Optional, Tuple
 
 import rclpy
+from ap1_msgs.msg import FloatStamped
 from builtin_interfaces.msg import Time as TimeMsg
 from geometry_msgs.msg import Pose, PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
@@ -26,23 +27,35 @@ class SlamBridgeNode(Node):
         self._output_localization_odom_topic = str(
             self.declare_parameter(
                 'output_localization_odom_topic',
-                '/localization/odom',
+                '/ap1/localization/odom',
             ).value
         )
         self._output_localization_pose_topic = str(
             self.declare_parameter(
                 'output_localization_pose_topic',
-                '/localization/pose',
+                '/ap1/localization/pose',
             ).value
         )
         self._output_slam_pose_topic = str(
-            self.declare_parameter('output_slam_pose_topic', '/slam_pose').value
+            self.declare_parameter(
+                'output_slam_pose_topic',
+                '/ap1/localization/slam_pose',
+            ).value
+        )
+        self._output_distance_topic = str(
+            self.declare_parameter(
+                'output_distance_topic',
+                '/ap1/localization/distance',
+            ).value
         )
         self._publish_pose = bool(
             self.declare_parameter('publish_pose', True).value
         )
         self._publish_slam_pose = bool(
             self.declare_parameter('publish_slam_pose', True).value
+        )
+        self._publish_distance = bool(
+            self.declare_parameter('publish_distance', True).value
         )
         self._slam_pose_frame = str(
             self.declare_parameter('slam_pose_frame', 'map').value
@@ -68,6 +81,12 @@ class SlamBridgeNode(Node):
                 0.1,
             ).value
         )
+        self._distance_jump_threshold_m = float(
+            self.declare_parameter(
+                'distance_jump_threshold_m',
+                10.0,
+            ).value
+        )
         self._qos_depth = int(self.declare_parameter('qos_depth', 10).value)
 
         if self._slam_pose_publish_rate_hz < 10.0:
@@ -82,10 +101,19 @@ class SlamBridgeNode(Node):
             )
             self._slam_pose_frequency_log_interval_sec = 5.0
 
+        if self._distance_jump_threshold_m <= 0.0:
+            self.get_logger().warn(
+                'distance_jump_threshold_m must be > 0; using 10.0m'
+            )
+            self._distance_jump_threshold_m = 10.0
+
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
 
         self._latest_slam_pose: Optional[PoseWithCovarianceStamped] = None
+        self._last_distance_position: Optional[Tuple[float, float]] = None
+        self._last_distance_frame: Optional[str] = None
+        self._total_distance_m = 0.0
         self._slam_pose_publish_count = 0
         self._frequency_window_start = self.get_clock().now()
         self._last_transform_warning = (
@@ -113,6 +141,11 @@ class SlamBridgeNode(Node):
             self._output_slam_pose_topic,
             self._qos_depth,
         )
+        self._distance_pub = self.create_publisher(
+            FloatStamped,
+            self._output_distance_topic,
+            self._qos_depth,
+        )
 
         self._slam_pose_timer = self.create_timer(
             1.0 / self._slam_pose_publish_rate_hz,
@@ -125,14 +158,15 @@ class SlamBridgeNode(Node):
 
         self.get_logger().info(
             (
-                'SLAM bridge ready. odom: %s -> %s, pose: %s, slam_pose: %s '
-                '(frame: %s, rate: %.2f Hz)'
+                'SLAM bridge ready. odom: %s -> %s, pose: %s, slam_pose: %s, '
+                'distance: %s (frame: %s, rate: %.2f Hz)'
             )
             % (
                 self._input_slam_odom_topic,
                 self._output_localization_odom_topic,
                 self._output_localization_pose_topic,
                 self._output_slam_pose_topic,
+                self._output_distance_topic,
                 self._slam_pose_frame,
                 self._slam_pose_publish_rate_hz,
             )
@@ -141,6 +175,8 @@ class SlamBridgeNode(Node):
     def _on_slam_odom(self, msg: Odometry) -> None:
         odom_message = deepcopy(msg)
         self._localization_odom_pub.publish(odom_message)
+        if self._publish_distance:
+            self._update_and_publish_distance(odom_message)
 
         if self._publish_pose:
             pose_message = PoseStamped()
@@ -154,6 +190,51 @@ class SlamBridgeNode(Node):
         slam_pose_message = self._build_slam_pose_message(odom_message)
         if slam_pose_message is not None:
             self._latest_slam_pose = slam_pose_message
+
+    def _update_and_publish_distance(self, odom_message: Odometry) -> None:
+        source_frame = odom_message.header.frame_id.strip()
+        current_position = (
+            odom_message.pose.pose.position.x,
+            odom_message.pose.pose.position.y,
+        )
+
+        if self._last_distance_position is None:
+            self._last_distance_position = current_position
+            self._last_distance_frame = source_frame
+        elif self._last_distance_frame != source_frame:
+            self.get_logger().warn(
+                (
+                    'Distance integration frame changed from %s to %s; '
+                    'resetting reference point'
+                )
+                % (
+                    self._last_distance_frame,
+                    source_frame,
+                )
+            )
+            self._last_distance_position = current_position
+            self._last_distance_frame = source_frame
+        else:
+            delta_x = current_position[0] - self._last_distance_position[0]
+            delta_y = current_position[1] - self._last_distance_position[1]
+            step_distance = sqrt(delta_x * delta_x + delta_y * delta_y)
+
+            # Integrate planar motion to avoid counting vertical pose noise.
+            if step_distance <= self._distance_jump_threshold_m:
+                self._total_distance_m += step_distance
+            else:
+                self.get_logger().warn(
+                    'Ignoring %.2fm odometry jump while integrating distance'
+                    % step_distance
+                )
+
+            self._last_distance_position = current_position
+
+        distance_message = FloatStamped()
+        distance_message.header = odom_message.header
+        distance_message.header.frame_id = source_frame
+        distance_message.value = float(self._total_distance_m)
+        self._distance_pub.publish(distance_message)
 
     def _build_slam_pose_message(
         self,
