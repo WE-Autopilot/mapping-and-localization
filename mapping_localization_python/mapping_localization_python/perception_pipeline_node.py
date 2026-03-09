@@ -11,7 +11,7 @@ from rclpy.time import Time
 
 
 class PerceptionPipelineNode(Node):
-    """Republish perception data immediately and fill missing lane boundaries."""
+    """Republish perception data immediately and fill missing lane data."""
 
     def __init__(self) -> None:
         super().__init__('perception_pipeline_node')
@@ -19,25 +19,25 @@ class PerceptionPipelineNode(Node):
         self._input_entities_topic = str(
             self.declare_parameter(
                 'input_entities_topic',
-                '/perception/entities',
+                '/ap1/perception/entities',
             ).value
         )
         self._input_lane_boundaries_topic = str(
             self.declare_parameter(
                 'input_lane_boundaries_topic',
-                '/perception/lane_boundaries',
+                '/ap1/perception/lanes',
             ).value
         )
         self._output_entities_topic = str(
             self.declare_parameter(
                 'output_entities_topic',
-                '/mapping/stable/entities',
+                '/ap1/mapping/entities',
             ).value
         )
         self._output_lane_boundaries_topic = str(
             self.declare_parameter(
                 'output_lane_boundaries_topic',
-                '/mapping/stable/lane_boundaries',
+                '/ap1/mapping/lanes',
             ).value
         )
         self._lane_timeout_sec = float(
