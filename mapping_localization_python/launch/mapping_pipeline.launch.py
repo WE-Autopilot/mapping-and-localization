@@ -11,13 +11,19 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description() -> LaunchDescription:
     """Create launch description for pipeline and optional Kitware SLAM."""
     use_kitware_slam = LaunchConfiguration('use_kitware_slam')
+    use_synthetic_perception = LaunchConfiguration('use_synthetic_perception')
     kitware_slam_params = LaunchConfiguration('kitware_slam_params')
     output_slam_pose_topic = LaunchConfiguration('output_slam_pose_topic')
     output_distance_topic = LaunchConfiguration('output_distance_topic')
     slam_pose_frame = LaunchConfiguration('slam_pose_frame')
-    slam_pose_publish_rate_hz = LaunchConfiguration('slam_pose_publish_rate_hz')
+    slam_pose_publish_rate_hz = LaunchConfiguration(
+        'slam_pose_publish_rate_hz'
+    )
     slam_pose_frequency_log_interval_sec = LaunchConfiguration(
         'slam_pose_frequency_log_interval_sec'
+    )
+    synthetic_publish_rate_hz = LaunchConfiguration(
+        'synthetic_publish_rate_hz'
     )
 
     return LaunchDescription(
@@ -26,6 +32,13 @@ def generate_launch_description() -> LaunchDescription:
                 'use_kitware_slam',
                 default_value='false',
                 description='Start lidar_slam/lidar_slam_node in this launch.',
+            ),
+            DeclareLaunchArgument(
+                'use_synthetic_perception',
+                default_value='false',
+                description=(
+                    'Publish deterministic AP1 sample perception data.'
+                ),
             ),
             DeclareLaunchArgument(
                 'kitware_slam_params',
@@ -65,6 +78,11 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='5.0',
                 description='Interval in seconds to log SLAM pose rate.',
             ),
+            DeclareLaunchArgument(
+                'synthetic_publish_rate_hz',
+                default_value='10.0',
+                description='Publish rate for synthetic AP1 perception data.',
+            ),
             Node(
                 package='mapping_localization_python',
                 executable='perception_pipeline_node',
@@ -76,6 +94,18 @@ def generate_launch_description() -> LaunchDescription:
                 executable='stored_point_registry_node',
                 name='stored_point_registry',
                 output='screen',
+            ),
+            Node(
+                package='mapping_localization_python',
+                executable='synthetic_perception_publisher_node',
+                name='synthetic_perception_publisher',
+                output='screen',
+                parameters=[
+                    {
+                        'publish_rate_hz': synthetic_publish_rate_hz,
+                    }
+                ],
+                condition=IfCondition(use_synthetic_perception),
             ),
             Node(
                 package='mapping_localization_python',

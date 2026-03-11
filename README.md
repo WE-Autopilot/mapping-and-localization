@@ -386,6 +386,7 @@ It is designed to:
 * Consume perception entities and lane boundaries
 * Publish immediately on each incoming perception callback
 * Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
+* Generate deterministic AP1 sample perception data when no Perception sample exists yet
 * Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to AP1 localization topics
 * Publish an accumulated distance estimate from SLAM odometry
 * Expose a point-registry service for planning and mapping
@@ -424,6 +425,24 @@ Key params:
 * `slam_pose_frequency_log_interval_sec` (default `5.0`)
 * `distance_jump_threshold_m` (default `10.0`)
 
+### `synthetic_perception_publisher_node`
+Outputs:
+* `/ap1/perception/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/ap1/perception/lanes` (`ap1_msgs/msg/LaneBoundaries`)
+
+Behavior:
+* Publishes both left and right lane boundaries on every cycle
+* Uses `16` waypoints per lane by default
+* Adds larger deterministic noise to the tail of each lane because Perception only specified that predictions become unstable near the end
+
+Key params:
+* `publish_rate_hz` (default `10.0`)
+* `waypoint_count` (default `16`)
+* `waypoint_spacing_m` (default `0.5`, soft target of `2` waypoints per meter)
+* `lane_width_m` (default `3.5`)
+* `tail_instability_points` (default `4`)
+* `tail_noise_max_m` (default `0.9`)
+
 ### `stored_point_registry_node`
 Services:
 * `/ap1/mapping/point_registry/create` (`ap1_msgs/srv/CreateStoredPoint`)
@@ -447,6 +466,13 @@ Enable Kitware SLAM in the same launch:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py use_kitware_slam:=true
+```
+
+Enable synthetic AP1 perception input for pipeline smoke tests:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_perception:=true
 ```
 
 By default, this launch passes:
