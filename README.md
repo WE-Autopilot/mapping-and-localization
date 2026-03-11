@@ -389,6 +389,7 @@ It is designed to:
 * Generate deterministic AP1 sample perception data when no Perception sample exists yet
 * Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to AP1 localization topics
 * Publish an accumulated distance estimate from SLAM odometry
+* Merge Kitware keypoint maps into `/slam_map` and expose `/save_map`
 * Expose a point-registry service for planning and mapping
 
 ## 8.1 Nodes
@@ -424,6 +425,31 @@ Key params:
 * `slam_pose_publish_rate_hz` (default `20.0`, clamped to minimum `10.0`)
 * `slam_pose_frequency_log_interval_sec` (default `5.0`)
 * `distance_jump_threshold_m` (default `10.0`)
+
+### `slam_map_bridge_node`
+Inputs:
+* `/maps/edges` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/intensity_edges` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/planes` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/blobs` (`sensor_msgs/msg/PointCloud2`)
+
+Outputs:
+* `/slam_map` (`sensor_msgs/msg/PointCloud2`, frame `map`)
+* `/slam_map_grid` (`nav_msgs/msg/OccupancyGrid`, optional)
+
+Services:
+* `/save_map` (`std_srvs/srv/Empty`)
+
+Behavior:
+* Merges the latest Kitware keypoint map topics into a single point cloud
+* Publishes the merged map at a configurable low rate (default `1.0 Hz`)
+* Saves a merged ASCII PCD and, when Kitware is available, triggers `lidar_slam/save_pc` so the same prefix can be reused via `maps.initial_maps`
+
+Key params:
+* `map_publish_rate_hz` (default `1.0`)
+* `map_frame` (default `map`)
+* `publish_occupancy_grid` (default `false`)
+* `save_map_prefix` (default `~/slam_maps/slam_map`)
 
 ### `synthetic_perception_publisher_node`
 Outputs:
@@ -475,6 +501,14 @@ ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   use_synthetic_perception:=true
 ```
 
+Run synthetic perception and Kitware SLAM together, including `/slam_map`:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_perception:=true \
+  use_kitware_slam:=true
+```
+
 By default, this launch passes:
 
 ```
@@ -482,7 +516,7 @@ mapping_localization_python/config/kitware_slam_params.yaml
 ```
 
 to `lidar_slam_node` (configured for `odometry_frame: map` and pose output at
-`20 Hz`). Replace it with your tuned config when available:
+`20 Hz`, keypoint map outputs enabled, and empty initial map prefix). Replace it with your tuned config when available:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
@@ -504,6 +538,29 @@ Override the default distance topic if needed:
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   output_distance_topic:=/ap1/localization/distance
+```
+
+Tune `/slam_map` output or enable the optional occupancy grid:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  slam_map_publish_rate_hz:=0.5 \
+  publish_slam_map_grid:=true
+```
+
+Preload a saved Kitware map prefix for localization mode:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  kitware_initial_maps_path:=/absolute/path/to/slam_map
+```
+
+Save the current map:
+
+```bash
+ros2 service call /save_map std_srvs/srv/Empty
 ```
 
 
