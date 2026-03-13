@@ -11,13 +11,29 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description() -> LaunchDescription:
     """Create launch description for pipeline and optional Kitware SLAM."""
     use_kitware_slam = LaunchConfiguration('use_kitware_slam')
+    use_synthetic_perception = LaunchConfiguration('use_synthetic_perception')
     kitware_slam_params = LaunchConfiguration('kitware_slam_params')
+    kitware_initial_maps_path = LaunchConfiguration(
+        'kitware_initial_maps_path'
+    )
     output_slam_pose_topic = LaunchConfiguration('output_slam_pose_topic')
     output_distance_topic = LaunchConfiguration('output_distance_topic')
+    output_slam_map_topic = LaunchConfiguration('output_slam_map_topic')
+    output_slam_map_grid_topic = LaunchConfiguration(
+        'output_slam_map_grid_topic'
+    )
     slam_pose_frame = LaunchConfiguration('slam_pose_frame')
-    slam_pose_publish_rate_hz = LaunchConfiguration('slam_pose_publish_rate_hz')
+    slam_pose_publish_rate_hz = LaunchConfiguration(
+        'slam_pose_publish_rate_hz'
+    )
     slam_pose_frequency_log_interval_sec = LaunchConfiguration(
         'slam_pose_frequency_log_interval_sec'
+    )
+    slam_map_publish_rate_hz = LaunchConfiguration('slam_map_publish_rate_hz')
+    publish_slam_map_grid = LaunchConfiguration('publish_slam_map_grid')
+    save_map_prefix = LaunchConfiguration('save_map_prefix')
+    synthetic_publish_rate_hz = LaunchConfiguration(
+        'synthetic_publish_rate_hz'
     )
 
     return LaunchDescription(
@@ -26,6 +42,13 @@ def generate_launch_description() -> LaunchDescription:
                 'use_kitware_slam',
                 default_value='false',
                 description='Start lidar_slam/lidar_slam_node in this launch.',
+            ),
+            DeclareLaunchArgument(
+                'use_synthetic_perception',
+                default_value='false',
+                description=(
+                    'Publish deterministic AP1 sample perception data.'
+                ),
             ),
             DeclareLaunchArgument(
                 'kitware_slam_params',
@@ -41,6 +64,11 @@ def generate_launch_description() -> LaunchDescription:
                 ),
             ),
             DeclareLaunchArgument(
+                'kitware_initial_maps_path',
+                default_value='',
+                description='Optional keypoint map prefix to preload in SLAM.',
+            ),
+            DeclareLaunchArgument(
                 'output_slam_pose_topic',
                 default_value='/ap1/localization/slam_pose',
                 description='Topic for PoseWithCovarianceStamped SLAM pose.',
@@ -49,6 +77,16 @@ def generate_launch_description() -> LaunchDescription:
                 'output_distance_topic',
                 default_value='/ap1/localization/distance',
                 description='Topic for cumulative distance travelled.',
+            ),
+            DeclareLaunchArgument(
+                'output_slam_map_topic',
+                default_value='/slam_map',
+                description='Topic for the merged SLAM map point cloud.',
+            ),
+            DeclareLaunchArgument(
+                'output_slam_map_grid_topic',
+                default_value='/slam_map_grid',
+                description='Topic for the optional SLAM occupancy grid.',
             ),
             DeclareLaunchArgument(
                 'slam_pose_frame',
@@ -65,6 +103,28 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='5.0',
                 description='Interval in seconds to log SLAM pose rate.',
             ),
+            DeclareLaunchArgument(
+                'slam_map_publish_rate_hz',
+                default_value='1.0',
+                description='Publish rate for the merged SLAM map.',
+            ),
+            DeclareLaunchArgument(
+                'publish_slam_map_grid',
+                default_value='false',
+                description=(
+                    'Also publish the merged map as an occupancy grid.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'save_map_prefix',
+                default_value='~/slam_maps/slam_map',
+                description='Prefix used by /save_map for PCD output.',
+            ),
+            DeclareLaunchArgument(
+                'synthetic_publish_rate_hz',
+                default_value='10.0',
+                description='Publish rate for synthetic AP1 perception data.',
+            ),
             Node(
                 package='mapping_localization_python',
                 executable='perception_pipeline_node',
@@ -76,6 +136,18 @@ def generate_launch_description() -> LaunchDescription:
                 executable='stored_point_registry_node',
                 name='stored_point_registry',
                 output='screen',
+            ),
+            Node(
+                package='mapping_localization_python',
+                executable='synthetic_perception_publisher_node',
+                name='synthetic_perception_publisher',
+                output='screen',
+                parameters=[
+                    {
+                        'publish_rate_hz': synthetic_publish_rate_hz,
+                    }
+                ],
+                condition=IfCondition(use_synthetic_perception),
             ),
             Node(
                 package='mapping_localization_python',
@@ -95,11 +167,32 @@ def generate_launch_description() -> LaunchDescription:
                 ],
             ),
             Node(
+                package='mapping_localization_python',
+                executable='slam_map_bridge_node',
+                name='slam_map_bridge',
+                output='screen',
+                parameters=[
+                    {
+                        'output_slam_map_topic': output_slam_map_topic,
+                        'output_slam_map_grid_topic': (
+                            output_slam_map_grid_topic
+                        ),
+                        'map_publish_rate_hz': slam_map_publish_rate_hz,
+                        'publish_occupancy_grid': publish_slam_map_grid,
+                        'save_map_prefix': save_map_prefix,
+                    }
+                ],
+                condition=IfCondition(use_kitware_slam),
+            ),
+            Node(
                 package='lidar_slam',
                 executable='lidar_slam_node',
                 name='kitware_lidar_slam',
                 output='screen',
-                parameters=[kitware_slam_params],
+                parameters=[
+                    kitware_slam_params,
+                    {'maps.initial_maps': kitware_initial_maps_path},
+                ],
                 condition=IfCondition(use_kitware_slam),
             ),
             Node(

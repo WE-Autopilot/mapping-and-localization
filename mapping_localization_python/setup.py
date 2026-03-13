@@ -45,8 +45,17 @@ setup(
                 'mapping_localization_python.perception_pipeline_node:main'
             ),
             (
+                'synthetic_perception_publisher_node = '
+                'mapping_localization_python.'
+                'synthetic_perception_publisher_node:main'
+            ),
+            (
                 'slam_bridge_node = '
                 'mapping_localization_python.slam_bridge_node:main'
+            ),
+            (
+                'slam_map_bridge_node = '
+                'mapping_localization_python.slam_map_bridge_node:main'
             ),
             (
                 'stored_point_registry_node = '

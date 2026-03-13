@@ -2,7 +2,18 @@
   ros__parameters:
     odometry_frame: "map"
     output:
+      registered_points: true
       pose:
         odom: true
         tf: true
         frequency: 20.0
+      maps:
+        edges: true
+        intensity_edges: true
+        planes: true
+        blobs: true
+    maps:
+      initial_maps: ""
+      keep_label: false
+      override_timestamp: false
+      timestamp_offset: 0.0

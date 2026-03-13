@@ -386,8 +386,10 @@ It is designed to:
 * Consume perception entities and lane boundaries
 * Publish immediately on each incoming perception callback
 * Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
+* Generate deterministic AP1 sample perception data when no Perception sample exists yet
 * Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to AP1 localization topics
 * Publish an accumulated distance estimate from SLAM odometry
+* Merge Kitware keypoint maps into `/slam_map` and expose `/save_map`
 * Expose a point-registry service for planning and mapping
 
 ## 8.1 Nodes
@@ -424,6 +426,49 @@ Key params:
 * `slam_pose_frequency_log_interval_sec` (default `5.0`)
 * `distance_jump_threshold_m` (default `10.0`)
 
+### `slam_map_bridge_node`
+Inputs:
+* `/maps/edges` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/intensity_edges` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/planes` (`sensor_msgs/msg/PointCloud2`)
+* `/maps/blobs` (`sensor_msgs/msg/PointCloud2`)
+
+Outputs:
+* `/slam_map` (`sensor_msgs/msg/PointCloud2`, frame `map`)
+* `/slam_map_grid` (`nav_msgs/msg/OccupancyGrid`, optional)
+
+Services:
+* `/save_map` (`std_srvs/srv/Empty`)
+
+Behavior:
+* Merges the latest Kitware keypoint map topics into a single point cloud
+* Publishes the merged map at a configurable low rate (default `1.0 Hz`)
+* Saves a merged ASCII PCD and, when Kitware is available, triggers `lidar_slam/save_pc` so the same prefix can be reused via `maps.initial_maps`
+
+Key params:
+* `map_publish_rate_hz` (default `1.0`)
+* `map_frame` (default `map`)
+* `publish_occupancy_grid` (default `false`)
+* `save_map_prefix` (default `~/slam_maps/slam_map`)
+
+### `synthetic_perception_publisher_node`
+Outputs:
+* `/ap1/perception/entities` (`ap1_msgs/msg/EntityStateArray`)
+* `/ap1/perception/lanes` (`ap1_msgs/msg/LaneBoundaries`)
+
+Behavior:
+* Publishes both left and right lane boundaries on every cycle
+* Uses `16` waypoints per lane by default
+* Adds larger deterministic noise to the tail of each lane because Perception only specified that predictions become unstable near the end
+
+Key params:
+* `publish_rate_hz` (default `10.0`)
+* `waypoint_count` (default `16`)
+* `waypoint_spacing_m` (default `0.5`, soft target of `2` waypoints per meter)
+* `lane_width_m` (default `3.5`)
+* `tail_instability_points` (default `4`)
+* `tail_noise_max_m` (default `0.9`)
+
 ### `stored_point_registry_node`
 Services:
 * `/ap1/mapping/point_registry/create` (`ap1_msgs/srv/CreateStoredPoint`)
@@ -449,6 +494,21 @@ Enable Kitware SLAM in the same launch:
 ros2 launch mapping_localization_python mapping_pipeline.launch.py use_kitware_slam:=true
 ```
 
+Enable synthetic AP1 perception input for pipeline smoke tests:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_perception:=true
+```
+
+Run synthetic perception and Kitware SLAM together, including `/slam_map`:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_perception:=true \
+  use_kitware_slam:=true
+```
+
 By default, this launch passes:
 
 ```
@@ -456,7 +516,7 @@ mapping_localization_python/config/kitware_slam_params.yaml
 ```
 
 to `lidar_slam_node` (configured for `odometry_frame: map` and pose output at
-`20 Hz`). Replace it with your tuned config when available:
+`20 Hz`, keypoint map outputs enabled, and empty initial map prefix). Replace it with your tuned config when available:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
@@ -478,6 +538,29 @@ Override the default distance topic if needed:
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   output_distance_topic:=/ap1/localization/distance
+```
+
+Tune `/slam_map` output or enable the optional occupancy grid:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  slam_map_publish_rate_hz:=0.5 \
+  publish_slam_map_grid:=true
+```
+
+Preload a saved Kitware map prefix for localization mode:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_kitware_slam:=true \
+  kitware_initial_maps_path:=/absolute/path/to/slam_map
+```
+
+Save the current map:
+
+```bash
+ros2 service call /save_map std_srvs/srv/Empty
 ```
 
 
