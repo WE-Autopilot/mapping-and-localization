@@ -56,7 +56,7 @@ def generate_launch_description() -> LaunchDescription:
                     [
                         FindPackageShare('mapping_localization_python'),
                         'config',
-                        'kitware_slam_params.yaml',
+                        'slam_params_online.yaml',
                     ]
                 ),
                 description=(
