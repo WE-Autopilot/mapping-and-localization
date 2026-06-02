@@ -45,7 +45,7 @@ class SlamBridgeNode(Node):
         self._output_distance_topic = str(
             self.declare_parameter(
                 'output_distance_topic',
-                '/ap1/localization/distance',
+                '/ap1/mapping/odometer',
             ).value
         )
         self._publish_pose = bool(
