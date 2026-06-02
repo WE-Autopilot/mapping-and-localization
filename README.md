@@ -415,7 +415,7 @@ Outputs:
 * `/ap1/localization/odom` (`nav_msgs/msg/Odometry`)
 * `/ap1/localization/pose` (`geometry_msgs/msg/PoseStamped`)
 * `/ap1/localization/slam_pose` (`geometry_msgs/msg/PoseWithCovarianceStamped`, frame `map`)
-* `/ap1/localization/distance` (`ap1_msgs/msg/FloatStamped`, meters travelled)
+* `/ap1/mapping/odometer` (`ap1_msgs/msg/FloatStamped`, meters travelled)
 
 Key params:
 * `publish_pose` (default `true`)
@@ -537,7 +537,7 @@ Override the default distance topic if needed:
 
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
-  output_distance_topic:=/ap1/localization/distance
+  output_distance_topic:=/ap1/mapping/odometer
 ```
 
 Tune `/slam_map` output or enable the optional occupancy grid:

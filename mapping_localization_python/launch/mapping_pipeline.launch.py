@@ -75,7 +75,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 'output_distance_topic',
-                default_value='/ap1/localization/distance',
+                default_value='/ap1/mapping/odometer',
                 description='Topic for cumulative distance travelled.',
             ),
             DeclareLaunchArgument(
