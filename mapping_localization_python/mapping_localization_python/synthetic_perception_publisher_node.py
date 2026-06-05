@@ -91,12 +91,17 @@ class SyntheticPerceptionPublisherNode(Node):
         )
 
     def _publish_sample_data(self) -> None:
-        current_time_sec = self.get_clock().now().nanoseconds / 1e9
+        now = self.get_clock().now()
+        current_time_sec = now.nanoseconds / 1e9
 
         entities_msg = EntityStateArray()
+        entities_msg.header.stamp = now.to_msg()
+        entities_msg.header.frame_id = 'base_link'
         entities_msg.entities = self._build_entities(current_time_sec)
 
         lanes_msg = LaneBoundaries()
+        lanes_msg.header.stamp = now.to_msg()
+        lanes_msg.header.frame_id = 'base_link'
         lanes_msg.left = self._build_lane_boundary(
             current_time_sec,
             is_left_lane=True,
