@@ -387,6 +387,7 @@ It is designed to:
 * Publish immediately on each incoming perception callback
 * Fill missing lane boundaries by holding the last valid left/right boundary for a short timeout
 * Generate deterministic AP1 sample perception data when no Perception sample exists yet
+* Generate deterministic SLAM odometry for smoke tests when no SLAM source exists yet
 * Optionally launch Kitware `lidar_slam_node` and bridge `/slam_odom` to AP1 localization topics
 * Publish an accumulated distance estimate from SLAM odometry
 * Merge Kitware keypoint maps into `/slam_map` and expose `/save_map`
@@ -469,6 +470,23 @@ Key params:
 * `tail_instability_points` (default `4`)
 * `tail_noise_max_m` (default `0.9`)
 
+### `synthetic_slam_odom_publisher_node`
+Output:
+* `/slam_odom` (`nav_msgs/msg/Odometry`)
+
+Behavior:
+* Publishes deterministic forward odometry for integration smoke tests
+* Lets `slam_bridge_node` exercise odometry, pose, and distance outputs without a live SLAM source
+* Should not be used as real localization
+
+Key params:
+* `output_topic` (default `/slam_odom`)
+* `frame_id` (default `map`)
+* `child_frame_id` (default `base_link`)
+* `publish_rate_hz` (default `20.0`)
+* `speed_mps` (default `1.0`)
+* `yaw_rate_radps` (default `0.0`)
+
 ### `stored_point_registry_node`
 Services:
 * `/ap1/mapping/point_registry/create` (`ap1_msgs/srv/CreateStoredPoint`)
@@ -499,6 +517,21 @@ Enable synthetic AP1 perception input for pipeline smoke tests:
 ```bash
 ros2 launch mapping_localization_python mapping_pipeline.launch.py \
   use_synthetic_perception:=true
+```
+
+Enable synthetic odometry input for pipeline smoke tests:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_odometry:=true
+```
+
+Run synthetic perception and odometry together for a planner smoke test:
+
+```bash
+ros2 launch mapping_localization_python mapping_pipeline.launch.py \
+  use_synthetic_perception:=true \
+  use_synthetic_odometry:=true
 ```
 
 Run synthetic perception and Kitware SLAM together, including `/slam_map`:
@@ -562,6 +595,5 @@ Save the current map:
 ```bash
 ros2 service call /save_map std_srvs/srv/Empty
 ```
-
 
 
