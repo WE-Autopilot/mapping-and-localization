@@ -50,6 +50,11 @@ setup(
                 'synthetic_perception_publisher_node:main'
             ),
             (
+                'synthetic_slam_odom_publisher_node = '
+                'mapping_localization_python.'
+                'synthetic_slam_odom_publisher_node:main'
+            ),
+            (
                 'slam_bridge_node = '
                 'mapping_localization_python.slam_bridge_node:main'
             ),

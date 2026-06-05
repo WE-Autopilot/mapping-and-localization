@@ -12,6 +12,7 @@ def generate_launch_description() -> LaunchDescription:
     """Create launch description for pipeline and optional Kitware SLAM."""
     use_kitware_slam = LaunchConfiguration('use_kitware_slam')
     use_synthetic_perception = LaunchConfiguration('use_synthetic_perception')
+    use_synthetic_odometry = LaunchConfiguration('use_synthetic_odometry')
     kitware_slam_params = LaunchConfiguration('kitware_slam_params')
     kitware_initial_maps_path = LaunchConfiguration(
         'kitware_initial_maps_path'
@@ -35,6 +36,12 @@ def generate_launch_description() -> LaunchDescription:
     synthetic_publish_rate_hz = LaunchConfiguration(
         'synthetic_publish_rate_hz'
     )
+    synthetic_odometry_publish_rate_hz = LaunchConfiguration(
+        'synthetic_odometry_publish_rate_hz'
+    )
+    synthetic_odometry_speed_mps = LaunchConfiguration(
+        'synthetic_odometry_speed_mps'
+    )
 
     return LaunchDescription(
         [
@@ -48,6 +55,13 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='false',
                 description=(
                     'Publish deterministic AP1 sample perception data.'
+                ),
+            ),
+            DeclareLaunchArgument(
+                'use_synthetic_odometry',
+                default_value='false',
+                description=(
+                    'Publish deterministic /slam_odom for smoke tests.'
                 ),
             ),
             DeclareLaunchArgument(
@@ -125,6 +139,16 @@ def generate_launch_description() -> LaunchDescription:
                 default_value='10.0',
                 description='Publish rate for synthetic AP1 perception data.',
             ),
+            DeclareLaunchArgument(
+                'synthetic_odometry_publish_rate_hz',
+                default_value='20.0',
+                description='Publish rate for synthetic /slam_odom data.',
+            ),
+            DeclareLaunchArgument(
+                'synthetic_odometry_speed_mps',
+                default_value='1.0',
+                description='Forward speed for synthetic /slam_odom data.',
+            ),
             Node(
                 package='mapping_localization_python',
                 executable='perception_pipeline_node',
@@ -148,6 +172,19 @@ def generate_launch_description() -> LaunchDescription:
                     }
                 ],
                 condition=IfCondition(use_synthetic_perception),
+            ),
+            Node(
+                package='mapping_localization_python',
+                executable='synthetic_slam_odom_publisher_node',
+                name='synthetic_slam_odom_publisher',
+                output='screen',
+                parameters=[
+                    {
+                        'publish_rate_hz': synthetic_odometry_publish_rate_hz,
+                        'speed_mps': synthetic_odometry_speed_mps,
+                    }
+                ],
+                condition=IfCondition(use_synthetic_odometry),
             ),
             Node(
                 package='mapping_localization_python',
